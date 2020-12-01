@@ -1,8 +1,8 @@
-FROM debian:stretch-slim
+FROM debian:buster-slim
 LABEL author="http://m-ko.de Markus Kosmal <dude@m-ko.de>"
 
 # Debian Base to use
-ENV DEBIAN_VERSION stretch
+ENV DEBIAN_VERSION buster
 
 # initial install of av daemon
 RUN echo "deb http://http.debian.net/debian/ $DEBIAN_VERSION main contrib non-free" > /etc/apt/sources.list && \
@@ -12,7 +12,9 @@ RUN echo "deb http://http.debian.net/debian/ $DEBIAN_VERSION main contrib non-fr
     DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y -qq \
         clamav-daemon \
         clamav-freshclam \
-        libclamunrar7 \
+        libclamunrar9 \
+        ca-certificates \
+        netcat-openbsd \
         wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -32,6 +34,10 @@ RUN mkdir /var/run/clamav && \
 RUN sed -i 's/^Foreground .*$/Foreground true/g' /etc/clamav/clamd.conf && \
     sed -i '/LocalSocketGroup/d' /etc/clamav/clamd.conf && \
     echo "TCPSocket 3310" >> /etc/clamav/clamd.conf && \ 
+    if [ -n "$HTTPProxyServer" ]; then echo "HTTPProxyServer $HTTPProxyServer" >> /etc/clamav/freshclam.conf; fi && \
+    if [ -n "$HTTPProxyPort"   ]; then echo "HTTPProxyPort $HTTPProxyPort" >> /etc/clamav/freshclam.conf; fi && \
+    if [ -n "$DatabaseMirror"  ]; then echo "DatabaseMirror $DatabaseMirror" >> /etc/clamav/freshclam.conf; fi && \
+    if [ -n "$DatabaseMirror"  ]; then echo "ScriptedUpdates off" >> /etc/clamav/freshclam.conf; fi && \
     sed -i 's/^Foreground .*$/Foreground true/g' /etc/clamav/freshclam.conf
     
 RUN chgrp -R root /var/log/clamav
@@ -46,9 +52,18 @@ RUN chmod -R g+w /var/run/clamav
 # volume provision, comment out otherwise can not change group to root
 VOLUME ["/var/lib/clamav"]
 
+
+# env based configs - will be called by bootstrap.sh
+COPY envconfig.sh /
+COPY check.sh /
+COPY bootstrap.sh /
+
 # port provision
 EXPOSE 3310
 
-# av daemon bootstrapping
-ADD bootstrap.sh /
+RUN chown clamav:clamav bootstrap.sh check.sh envconfig.sh /etc/clamav/clamd.conf /etc/clamav/freshclam.conf && \
+    chmod u+x bootstrap.sh check.sh envconfig.sh    
+
+USER clamav
+
 CMD ["/bootstrap.sh"]

@@ -1,12 +1,11 @@
-FROM debian:buster-slim
+FROM debian:stretch-slim
 LABEL author="http://m-ko.de Markus Kosmal <dude@m-ko.de>"
 
 # Debian Base to use
-ENV DEBIAN_VERSION buster
+ENV DEBIAN_VERSION stretch
 
 # initial install of av daemon
-RUN echo "deb http://http.debian.net/debian/ $DEBIAN_VERSION main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://http.debian.net/debian/ $DEBIAN_VERSION-updates main contrib non-free" >> /etc/apt/sources.list && \
+RUN echo "deb http://deb.debian.org/debian/ $DEBIAN_VERSION main contrib non-free" > /etc/apt/sources.list && \
     echo "deb http://security.debian.org/ $DEBIAN_VERSION/updates main contrib non-free" >> /etc/apt/sources.list && \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y -qq \
@@ -14,16 +13,15 @@ RUN echo "deb http://http.debian.net/debian/ $DEBIAN_VERSION main contrib non-fr
         clamav-freshclam \
         libclamunrar9 \
         ca-certificates \
-        netcat-openbsd \
         wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # initial update of av databases
-RUN wget -O /var/lib/clamav/main.cvd http://database.clamav.net/main.cvd && \
-    wget -O /var/lib/clamav/daily.cvd http://database.clamav.net/daily.cvd && \
-    wget -O /var/lib/clamav/bytecode.cvd http://database.clamav.net/bytecode.cvd && \
-    chown clamav:clamav /var/lib/clamav/*.cvd
+RUN wget -v -O /var/lib/clamav/main.cvd http://database.clamav.net/main.cvd && \
+    wget -v -O /var/lib/clamav/daily.cvd http://database.clamav.net/daily.cvd && \
+    wget -v -O /var/lib/clamav/bytecode.cvd http://database.clamav.net/bytecode.cvd && \
+    chown clamav:clamav /var/lib/clamav/*
 
 # permission juggling
 RUN mkdir /var/run/clamav && \
@@ -34,6 +32,7 @@ RUN mkdir /var/run/clamav && \
 RUN sed -i 's/^Foreground .*$/Foreground true/g' /etc/clamav/clamd.conf && \
     sed -i '/LocalSocketGroup/d' /etc/clamav/clamd.conf && \
     echo "TCPSocket 3310" >> /etc/clamav/clamd.conf && \ 
+    echo "DatabaseDirectory /var/lib/clamav" >> /etc/clamav/clamd.conf && \
     if [ -n "$HTTPProxyServer" ]; then echo "HTTPProxyServer $HTTPProxyServer" >> /etc/clamav/freshclam.conf; fi && \
     if [ -n "$HTTPProxyPort"   ]; then echo "HTTPProxyPort $HTTPProxyPort" >> /etc/clamav/freshclam.conf; fi && \
     if [ -n "$DatabaseMirror"  ]; then echo "DatabaseMirror $DatabaseMirror" >> /etc/clamav/freshclam.conf; fi && \
@@ -48,6 +47,7 @@ RUN chgrp -R root /run/clamav
 RUN chmod -R g+w /run/clamav
 RUN chgrp -R root /var/run/clamav
 RUN chmod -R g+w /var/run/clamav
+
 
 # volume provision, comment out otherwise can not change group to root
 VOLUME ["/var/lib/clamav"]

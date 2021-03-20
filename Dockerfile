@@ -48,11 +48,6 @@ RUN chmod -R g+w /run/clamav
 RUN chgrp -R root /var/run/clamav
 RUN chmod -R g+w /var/run/clamav
 
-
-# volume provision, comment out otherwise can not change group to root
-VOLUME ["/var/lib/clamav"]
-
-
 # env based configs - will be called by bootstrap.sh
 COPY envconfig.sh /
 COPY check.sh /

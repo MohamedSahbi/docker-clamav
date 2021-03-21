@@ -3,6 +3,8 @@ LABEL author="http://m-ko.de Markus Kosmal <dude@m-ko.de>"
 
 # Debian Base to use
 ENV DEBIAN_VERSION stretch
+#ENV $HTTPProxyServer HTTPProxyServer
+#ENV $HTTPProxyPort Port
 
 # initial install of av daemon
 RUN echo "deb http://deb.debian.org/debian/ $DEBIAN_VERSION main contrib non-free" > /etc/apt/sources.list && \
@@ -33,8 +35,11 @@ RUN sed -i 's/^Foreground .*$/Foreground true/g' /etc/clamav/clamd.conf && \
     sed -i '/LocalSocketGroup/d' /etc/clamav/clamd.conf && \
     echo "TCPSocket 3310" >> /etc/clamav/clamd.conf && \ 
     echo "DatabaseDirectory /var/lib/clamav" >> /etc/clamav/clamd.conf && \
-    if [ -n "$HTTPProxyServer" ]; then echo "HTTPProxyServer $HTTPProxyServer" >> /etc/clamav/freshclam.conf; fi && \
-    if [ -n "$HTTPProxyPort"   ]; then echo "HTTPProxyPort $HTTPProxyPort" >> /etc/clamav/freshclam.conf; fi && \
+# By passing the proxy as a parameter in the docker build command,
+# envconfig.sh updates clamd.conf and freshclam.conf (worked for me)
+# If it didn't work, uncomment these lines and set the values in lines 6 and 7
+    # if [ -n "$HTTPProxyServer" ]; then echo "HTTPProxyServer $HTTPProxyServer" >> /etc/clamav/freshclam.conf; fi && \
+    # if [ -n "$HTTPProxyPort"   ]; then echo "HTTPProxyPort $HTTPProxyPort" >> /etc/clamav/freshclam.conf; fi && \
     if [ -n "$DatabaseMirror"  ]; then echo "DatabaseMirror $DatabaseMirror" >> /etc/clamav/freshclam.conf; fi && \
     if [ -n "$DatabaseMirror"  ]; then echo "ScriptedUpdates off" >> /etc/clamav/freshclam.conf; fi && \
     sed -i 's/^Foreground .*$/Foreground true/g' /etc/clamav/freshclam.conf
